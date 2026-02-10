@@ -1,0 +1,49 @@
+ERROR - 2026-02-10 10:24:47 --> Error connecting to the database: mysqli_sql_exception: Unknown database 'portfolio' in C:\wamp_84\www\Portfolio\system\Database\MySQLi\Connection.php:201
+Stack trace:
+#0 C:\wamp_84\www\Portfolio\system\Database\MySQLi\Connection.php(201): mysqli->real_connect('localhost', 'root', Object(SensitiveParameterValue), 'portfolio', 3306, '', 0)
+#1 C:\wamp_84\www\Portfolio\system\Database\BaseConnection.php(419): CodeIgniter\Database\MySQLi\Connection->connect(false)
+#2 C:\wamp_84\www\Portfolio\system\Database\BaseConnection.php(654): CodeIgniter\Database\BaseConnection->initialize()
+#3 C:\wamp_84\www\Portfolio\system\Database\BaseConnection.php(1565): CodeIgniter\Database\BaseConnection->query('SHOW TABLES FRO...')
+#4 C:\wamp_84\www\Portfolio\system\Database\BaseConnection.php(1585): CodeIgniter\Database\BaseConnection->listTables()
+#5 C:\wamp_84\www\Portfolio\system\Database\MigrationRunner.php(821): CodeIgniter\Database\BaseConnection->tableExists('migrations')
+#6 C:\wamp_84\www\Portfolio\system\Database\MigrationRunner.php(173): CodeIgniter\Database\MigrationRunner->ensureTable()
+#7 C:\wamp_84\www\Portfolio\system\Commands\Database\Migrate.php(89): CodeIgniter\Database\MigrationRunner->latest(NULL)
+#8 C:\wamp_84\www\Portfolio\system\CLI\SignalTrait.php(245): CodeIgniter\Commands\Database\Migrate::CodeIgniter\Commands\Database\{closure}()
+#9 C:\wamp_84\www\Portfolio\system\Commands\Database\Migrate.php(88): CodeIgniter\Commands\Database\Migrate->withSignalsBlocked(Object(Closure))
+#10 C:\wamp_84\www\Portfolio\system\CLI\Commands.php(74): CodeIgniter\Commands\Database\Migrate->run(Array)
+#11 C:\wamp_84\www\Portfolio\system\CLI\Console.php(47): CodeIgniter\CLI\Commands->run('migrate', Array)
+#12 C:\wamp_84\www\Portfolio\system\Boot.php(442): CodeIgniter\CLI\Console->run()
+#13 C:\wamp_84\www\Portfolio\system\Boot.php(166): CodeIgniter\Boot::runCommand(Object(CodeIgniter\CLI\Console))
+#14 C:\wamp_84\www\Portfolio\spark(87): CodeIgniter\Boot::bootSpark(Object(Config\Paths))
+#15 {main}
+
+Next CodeIgniter\Database\Exceptions\DatabaseException: Unknown database 'portfolio' in C:\wamp_84\www\Portfolio\system\Database\MySQLi\Connection.php:231
+Stack trace:
+#0 C:\wamp_84\www\Portfolio\system\Database\BaseConnection.php(419): CodeIgniter\Database\MySQLi\Connection->connect(false)
+#1 C:\wamp_84\www\Portfolio\system\Database\BaseConnection.php(654): CodeIgniter\Database\BaseConnection->initialize()
+#2 C:\wamp_84\www\Portfolio\system\Database\BaseConnection.php(1565): CodeIgniter\Database\BaseConnection->query('SHOW TABLES FRO...')
+#3 C:\wamp_84\www\Portfolio\system\Database\BaseConnection.php(1585): CodeIgniter\Database\BaseConnection->listTables()
+#4 C:\wamp_84\www\Portfolio\system\Database\MigrationRunner.php(821): CodeIgniter\Database\BaseConnection->tableExists('migrations')
+#5 C:\wamp_84\www\Portfolio\system\Database\MigrationRunner.php(173): CodeIgniter\Database\MigrationRunner->ensureTable()
+#6 C:\wamp_84\www\Portfolio\system\Commands\Database\Migrate.php(89): CodeIgniter\Database\MigrationRunner->latest(NULL)
+#7 C:\wamp_84\www\Portfolio\system\CLI\SignalTrait.php(245): CodeIgniter\Commands\Database\Migrate::CodeIgniter\Commands\Database\{closure}()
+#8 C:\wamp_84\www\Portfolio\system\Commands\Database\Migrate.php(88): CodeIgniter\Commands\Database\Migrate->withSignalsBlocked(Object(Closure))
+#9 C:\wamp_84\www\Portfolio\system\CLI\Commands.php(74): CodeIgniter\Commands\Database\Migrate->run(Array)
+#10 C:\wamp_84\www\Portfolio\system\CLI\Console.php(47): CodeIgniter\CLI\Commands->run('migrate', Array)
+#11 C:\wamp_84\www\Portfolio\system\Boot.php(442): CodeIgniter\CLI\Console->run()
+#12 C:\wamp_84\www\Portfolio\system\Boot.php(166): CodeIgniter\Boot::runCommand(Object(CodeIgniter\CLI\Console))
+#13 C:\wamp_84\www\Portfolio\spark(87): CodeIgniter\Boot::bootSpark(Object(Config\Paths))
+#14 {main}
+CRITICAL - 2026-02-10 14:21:45 --> CodeIgniter\View\Exceptions\ViewException: Invalid file: "admin/education.php"
+[Method: GET, Route: admin/education]
+in SYSTEMPATH\Exceptions\FrameworkException.php on line 39.
+ 1 SYSTEMPATH\View\View.php(226): CodeIgniter\Exceptions\FrameworkException::forInvalidFile('admin/education.php')
+ 2 SYSTEMPATH\Common.php(1250): CodeIgniter\View\View->render('admin/education', [], true)
+ 3 APPPATH\Controllers\Admin.php(42): view('admin/education', [...])
+ 4 APPPATH\Controllers\Admin.php(717): App\Controllers\Admin->renderAdminView('admin/education', [...])
+ 5 SYSTEMPATH\CodeIgniter.php(951): App\Controllers\Admin->education()
+ 6 SYSTEMPATH\CodeIgniter.php(497): CodeIgniter\CodeIgniter->runController(Object(App\Controllers\Admin))
+ 7 SYSTEMPATH\CodeIgniter.php(340): CodeIgniter\CodeIgniter->handleRequest(null, Object(Config\Cache), false)
+ 8 SYSTEMPATH\Boot.php(417): CodeIgniter\CodeIgniter->run()
+ 9 SYSTEMPATH\Boot.php(68): CodeIgniter\Boot::runCodeIgniter(Object(CodeIgniter\CodeIgniter))
+10 FCPATH\index.php(59): CodeIgniter\Boot::bootWeb(Object(Config\Paths))
