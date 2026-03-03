@@ -1,0 +1,21 @@
+# ─── Portfolio Root .htaccess ──────────────────────────────────────────────────
+# Disable directory listing (security: prevent seeing project files)
+Options -Indexes
+
+<IfModule mod_rewrite.c>
+    Options +FollowSymlinks
+    RewriteEngine On
+
+    # Set the base path to the Portfolio subfolder
+    RewriteBase /Portfolio/
+
+    # If the request is already going into /Portfolio/public/, leave it alone
+    RewriteCond %{REQUEST_URI} ^/Portfolio/public/ [NC]
+    RewriteRule ^ - [L]
+
+    # Internally rewrite root to public/index.php (no external redirect)
+    RewriteRule ^$ public/index.php [L]
+
+    # Internally forward everything else to public/ (no external 301 redirect)
+    RewriteRule ^(.+)$ public/$1 [L]
+</IfModule>

@@ -6,37 +6,31 @@ class Home extends BaseController
 {
     public function index()
     {
-        $skillsModel = new \App\Models\SkillsModel();
+        $skillsModel  = new \App\Models\SkillsModel();
         $projectsModel = new \App\Models\ProjectsModel();
-        $profileModel = new \App\Models\UserProfileModel();
-        $contactModel = new \App\Models\ContactModel();
+        $profileModel  = new \App\Models\UserProfileModel();
+        $contactModel  = new \App\Models\ContactModel();
 
-        // Increment Views
+        // Increment page view counter (safe — column existence managed by migration)
         $profile = $profileModel->first();
         if ($profile) {
-            // Check if column exists, if not add it (Self-healing)
-            $db = \Config\Database::connect();
-            if (!$db->fieldExists('total_views', 'profile')) {
-                $db->query("ALTER TABLE profile ADD COLUMN total_views INT DEFAULT 0 AFTER profile_image");
-            }
-            
             $profileModel->update($profile['id'], [
                 'total_views' => ($profile['total_views'] ?? 0) + 1
             ]);
         }
 
         $data = [
-            'skills' => $skillsModel->where('status', 1)->orderBy('category', 'ASC')->orderBy('display_order', 'ASC')->findAll(),
-            'projects' => $projectsModel->where('status', 1)->orderBy('created_at', 'DESC')->findAll(),
-            'experience' => (new \App\Models\ExperienceModel())->orderBy('is_current', 'DESC')->orderBy('start_date', 'DESC')->findAll(),
-            'education' => (new \App\Models\EducationModel())->orderBy('year_end', 'DESC')->findAll(),
-            'services' => (new \App\Models\ServicesModel())->orderBy('created_at', 'ASC')->findAll(),
+            'skills'       => $skillsModel->where('status', 1)->orderBy('category', 'ASC')->orderBy('display_order', 'ASC')->findAll(),
+            'projects'     => $projectsModel->where('status', 1)->orderBy('created_at', 'DESC')->findAll(),
+            'experience'   => (new \App\Models\ExperienceModel())->orderBy('is_current', 'DESC')->orderBy('start_date', 'DESC')->findAll(),
+            'education'    => (new \App\Models\EducationModel())->orderBy('year_end', 'DESC')->findAll(),
+            'services'     => (new \App\Models\ServicesModel())->orderBy('created_at', 'ASC')->findAll(),
             'testimonials' => (new \App\Models\TestimonialsModel())->orderBy('created_at', 'DESC')->findAll(),
-            'seo' => (new \App\Models\SeoModel())->first() ?? [],
-            'profile' => $profileModel->first() ?? [],
-            'contact' => $contactModel->first() ?? [],
-            'features' => (new \App\Models\FeatureSettingsModel())->getFeaturesMap(),
-            'theme' => (new \App\Models\ThemeSettingsModel())->getActiveTheme()
+            'seo'          => (new \App\Models\SeoModel())->first() ?? [],
+            'profile'      => $profileModel->first() ?? [],
+            'contact'      => $contactModel->first() ?? [],
+            'features'     => (new \App\Models\FeatureSettingsModel())->getFeaturesMap(),
+            'theme'        => (new \App\Models\ThemeSettingsModel())->getActiveTheme(),
         ];
 
         return view('home', $data);
@@ -47,11 +41,27 @@ class Home extends BaseController
      */
     public function submit_contact()
     {
-        // Validation rules
+        // ── Honeypot spam check (hidden field must be empty) ───────────────────
+        if ($this->request->getPost('website') !== '' && $this->request->getPost('website') !== null) {
+            // Silently act like success to confuse bots
+            return $this->response->setJSON(['status' => 'success', 'message' => 'Thank you! Your message has been sent.']);
+        }
+
+        // ── Rate limiting: max 3 contact submissions per IP per 10 minutes ─────
+        $ipKey    = 'contact_' . md5($this->request->getIPAddress());
+        $attempts = (int) session()->get($ipKey);
+        $lockKey  = 'contact_lock_' . md5($this->request->getIPAddress());
+        $lockTime = session()->get($lockKey);
+
+        if ($lockTime && time() < $lockTime) {
+            return $this->response->setJSON(['status' => 'error', 'message' => 'Too many messages sent. Please wait 10 minutes before trying again.']);
+        }
+
+        // ── Validation ────────────────────────────────────────────────────────
         $rules = [
-            'name' => 'required|min_length[3]|max_length[100]',
-            'email' => 'required|valid_email|max_length[100]',
-            'message' => 'required|min_length[10]|max_length[1000]'
+            'name'    => 'required|min_length[3]|max_length[100]|alpha_space',
+            'email'   => 'required|valid_email|max_length[100]',
+            'message' => 'required|min_length[10]|max_length[2000]',
         ];
 
         if (!$this->validate($rules)) {
@@ -61,29 +71,35 @@ class Home extends BaseController
             ]);
         }
 
-        // Save message to database
-        $messagesModel = new \App\Models\MessagesModel();
+        // ── Sanitize input ────────────────────────────────────────────────────
         $data = [
-            'name' => $this->request->getPost('name'),
-            'email' => $this->request->getPost('email'),
-            'message' => $this->request->getPost('message'),
-            'is_read' => 0
+            'name'    => trim(strip_tags($this->request->getPost('name'))),
+            'email'   => trim($this->request->getPost('email')),
+            'message' => trim(strip_tags($this->request->getPost('message'))),
+            'is_read' => 0,
         ];
 
+        // ── Save to DB ────────────────────────────────────────────────────────
+        $messagesModel = new \App\Models\MessagesModel();
         if ($messagesModel->insert($data)) {
-            // Send email notification to admin
+            // Increment rate-limit counter
+            $newAttempts = $attempts + 1;
+            session()->set($ipKey, $newAttempts);
+            if ($newAttempts >= 3) {
+                session()->set($lockKey, time() + 600);
+                session()->set($ipKey, 0);
+            }
+
+            // Fire email notification (non-blocking — errors are just logged)
             $this->sendEmailNotification($data);
-            
+
             return $this->response->setJSON([
-                'status' => 'success',
-                'message' => 'Thank you! Your message has been sent successfully. We\'ll get back to you soon.'
-            ]);
-        } else {
-            return $this->response->setJSON([
-                'status' => 'error',
-                'message' => 'Failed to send message. Please try again later.'
+                'status'  => 'success',
+                'message' => 'Thank you! Your message has been sent successfully. I\'ll get back to you soon.'
             ]);
         }
+
+        return $this->response->setJSON(['status' => 'error', 'message' => 'Failed to send message. Please try again later.']);
     }
 
     /**

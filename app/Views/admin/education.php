@@ -70,7 +70,7 @@
                 <h5 class="modal-title fw-bold">Add New Education</h5>
                 <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
             </div>
-            <form id="addEducationForm" action="<?= base_url('admin/education/add') ?>" method="POST">
+            <form id="addEducationForm" action="<?= base_url('admin/education/add') ?>" method="POST" onsubmit="return false;">
                 <?= csrf_field() ?>
                 <div class="modal-body p-4">
                     <div class="row">
@@ -121,7 +121,7 @@
                 <h5 class="modal-title fw-bold">Edit Education</h5>
                 <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
             </div>
-            <form id="editEducationForm" action="<?= base_url('admin/education/update') ?>" method="POST">
+            <form id="editEducationForm" action="<?= base_url('admin/education/update') ?>" method="POST" onsubmit="return false;">
                 <?= csrf_field() ?>
                 <input type="hidden" name="id" id="edit_edu_id">
                 <div class="modal-body p-4">

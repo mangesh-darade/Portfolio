@@ -91,7 +91,7 @@
                 <h5 class="modal-title fw-bold">Add New Project</h5>
                 <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
             </div>
-            <form id="addProjectForm" action="<?= site_url('admin/projects/add') ?>" method="POST" enctype="multipart/form-data">
+            <form id="addProjectForm" action="<?= site_url('admin/projects/add') ?>" method="POST" enctype="multipart/form-data" onsubmit="return false;">
                 <?= csrf_field() ?>
                 <div class="modal-body p-4">
                     <div class="row">
@@ -143,7 +143,7 @@
                 <h5 class="modal-title fw-bold">Edit Project</h5>
                 <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
             </div>
-            <form id="editProjectForm" action="<?= site_url('admin/projects/update') ?>" method="POST" enctype="multipart/form-data">
+            <form id="editProjectForm" action="<?= site_url('admin/projects/update') ?>" method="POST" enctype="multipart/form-data" onsubmit="return false;">
                 <?= csrf_field() ?>
                 <input type="hidden" name="id" id="edit_project_id">
                 <div class="modal-body p-4">
@@ -249,7 +249,7 @@ document.addEventListener('submit', function(e) {
             submitBtn.prop('disabled', true).html('<i class="fas fa-spinner fa-spin me-2"></i>Saving...');
             
             $.ajax({
-                url: 'projects/add', // More robust relative URL
+                url: '<?= site_url("admin/projects/add") ?>',
                 type: 'POST',
                 data: formData,
                 contentType: false,
@@ -337,7 +337,7 @@ document.addEventListener('submit', function(e) {
             submitBtn.prop('disabled', true).html('<i class="fas fa-spinner fa-spin me-2"></i>Updating...');
             
             $.ajax({
-                url: 'projects/update', // More robust relative URL
+                url: '<?= site_url("admin/projects/update") ?>',
                 type: 'POST',
                 data: formData,
                 contentType: false,

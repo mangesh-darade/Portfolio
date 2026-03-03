@@ -18,7 +18,7 @@
                 <p class="text-muted small mb-0">Enable or disable sections displayed on your public portfolio.</p>
             </div>
             <div class="card-body-custom">
-                <form id="featureSettingsForm">
+                <form id="featureSettingsForm" onsubmit="return false;">
                     <div class="table-responsive">
                         <table class="table table-hover align-middle">
                             <thead>

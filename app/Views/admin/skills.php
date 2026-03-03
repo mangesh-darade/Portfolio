@@ -86,7 +86,7 @@
                 <h5 class="modal-title fw-bold">Add New Skill</h5>
                 <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
             </div>
-            <form id="addSkillForm" action="<?= site_url('admin/skills/add') ?>" method="POST">
+            <form id="addSkillForm" action="<?= site_url('admin/skills/add') ?>" method="POST" onsubmit="return false;">
                 <?= csrf_field() ?>
                 <div class="modal-body p-4">
                     <div class="mb-3">
@@ -133,7 +133,7 @@
                 <h5 class="modal-title fw-bold">Edit Skill</h5>
                 <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
             </div>
-            <form id="editSkillForm" action="<?= site_url('admin/skills/update') ?>" method="POST">
+            <form id="editSkillForm" action="<?= site_url('admin/skills/update') ?>" method="POST" onsubmit="return false;">
                 <?= csrf_field() ?>
                 <input type="hidden" name="id" id="edit_skill_id">
                 <div class="modal-body p-4">
@@ -217,7 +217,7 @@ function initializeSkillHandlers() {
         submitBtn.prop('disabled', true).html('<i class="fas fa-spinner fa-spin me-2"></i>Saving...');
         
         $.ajax({
-            url: 'skills/add', // More robust relative URL
+            url: '<?= site_url("admin/skills/add") ?>',
             type: 'POST',
             data: $(this).serialize(),
             dataType: 'json',
@@ -277,7 +277,7 @@ function initializeSkillHandlers() {
         submitBtn.prop('disabled', true).html('<i class="fas fa-spinner fa-spin me-2"></i>Updating...');
         
         $.ajax({
-            url: 'skills/update', // More robust relative URL
+            url: '<?= site_url("admin/skills/update") ?>',
             type: 'POST',
             data: $(this).serialize(),
             dataType: 'json',

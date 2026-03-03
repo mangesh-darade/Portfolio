@@ -296,6 +296,13 @@
                     <?= session()->getFlashdata('error') ?>
                 </div>
             <?php endif; ?>
+
+            <?php if(session()->getFlashdata('success')): ?>
+                <div class="alert alert-custom" style="background:rgba(0,184,148,0.12);color:#00b894;border:1px solid rgba(0,184,148,0.2);">
+                    <i class="fas fa-check-circle me-2"></i>
+                    <?= session()->getFlashdata('success') ?>
+                </div>
+            <?php endif; ?>
             
             <form id="loginForm" method="POST" action="<?= site_url('auth/do_login') ?>">
                 <?= csrf_field() ?>
@@ -326,7 +333,9 @@
             </form>
             
             <div class="forgot-password">
-                <a href="#"><i class="fas fa-key me-1"></i> Forgot Password?</a>
+                <a href="<?= site_url('auth/forgot-password') ?>">
+                    <i class="fas fa-key me-1"></i> Forgot Password?
+                </a>
             </div>
         </div>
     </div>

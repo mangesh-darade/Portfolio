@@ -19,7 +19,7 @@
                 <h5 class="card-title-custom"><i class="fas fa-server me-2"></i>SMTP Server Settings</h5>
             </div>
             <div class="card-body-custom">
-                <form id="emailSettingsForm" action="<?= base_url('admin/email-settings/update') ?>" method="POST">
+                <form id="emailSettingsForm" action="<?= base_url('admin/email-settings/update') ?>" method="POST" onsubmit="return false;">
                     <?= csrf_field() ?>
                     
                     <div class="row mb-4">
@@ -77,7 +77,10 @@
                         </div>
                     </div>
                     
-                    <div class="text-end pt-3 border-top border-light border-opacity-10">
+                    <div class="text-end pt-3 border-top border-light border-opacity-10 d-flex justify-content-between align-items-center">
+                        <button type="button" id="testEmailBtn" class="btn btn-outline-info px-4">
+                            <i class="fas fa-paper-plane me-2"></i>Send Test Email
+                        </button>
                         <button type="submit" class="btn btn-gradient px-4">
                             <i class="fas fa-save me-2"></i>Save Configuration
                         </button>
@@ -122,6 +125,30 @@ function initializeEmailSettingsHandlers() {
                 error: function() {
                     toastr.error('An error occurred. Please try again.');
                     submitBtn.prop('disabled', false).html(originalText);
+                }
+            });
+        });
+        // Send Test Email
+        jQuery('#testEmailBtn').on('click', function() {
+            var btn = jQuery(this);
+            var orig = btn.html();
+            btn.prop('disabled', true).html('<i class="fas fa-spinner fa-spin me-2"></i>Sending...');
+            jQuery.ajax({
+                url: '<?= base_url('admin/email-settings/test') ?>',
+                type: 'POST',
+                data: { '<?= csrf_token() ?>': '<?= csrf_hash() ?>' },
+                dataType: 'json',
+                success: function(res) {
+                    if (res.status === 'success') {
+                        toastr.success(res.message);
+                    } else {
+                        toastr.error(res.message);
+                    }
+                    btn.prop('disabled', false).html(orig);
+                },
+                error: function() {
+                    toastr.error('Failed to send test email.');
+                    btn.prop('disabled', false).html(orig);
                 }
             });
         });

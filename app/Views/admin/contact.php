@@ -19,7 +19,7 @@
                 <h5 class="card-title-custom"><i class="fas fa-address-book me-2"></i>Public Contact Information</h5>
             </div>
             <div class="card-body-custom">
-                <form id="contactSettingsForm">
+                <form id="contactSettingsForm" onsubmit="return false;">
                     <?= csrf_field() ?>
                     
                     <div class="mb-3">

@@ -1,0 +1,46 @@
+ERROR - 2026-02-11 05:01:08 --> Error connecting to the database: mysqli_sql_exception: No connection could be made because the target machine actively refused it in C:\wamp_84\www\Portfolio\system\Database\MySQLi\Connection.php:201
+Stack trace:
+#0 C:\wamp_84\www\Portfolio\system\Database\MySQLi\Connection.php(201): mysqli->real_connect('localhost', 'root', Object(SensitiveParameterValue), 'portfolio', 3306, '', 0)
+#1 C:\wamp_84\www\Portfolio\system\Database\BaseConnection.php(419): CodeIgniter\Database\MySQLi\Connection->connect(false)
+#2 C:\wamp_84\www\Portfolio\system\Database\BaseConnection.php(654): CodeIgniter\Database\BaseConnection->initialize()
+#3 C:\wamp_84\www\Portfolio\system\Database\BaseBuilder.php(1733): CodeIgniter\Database\BaseConnection->query('SELECT COUNT(*)...', Array, false)
+#4 C:\wamp_84\www\Portfolio\system\Model.php(524): CodeIgniter\Database\BaseBuilder->countAllResults(true)
+#5 C:\wamp_84\www\Portfolio\app\Controllers\Admin.php(589): CodeIgniter\Model->countAllResults()
+#6 C:\wamp_84\www\Portfolio\system\CodeIgniter.php(951): App\Controllers\Admin->check_notifications()
+#7 C:\wamp_84\www\Portfolio\system\CodeIgniter.php(497): CodeIgniter\CodeIgniter->runController(Object(App\Controllers\Admin))
+#8 C:\wamp_84\www\Portfolio\system\CodeIgniter.php(340): CodeIgniter\CodeIgniter->handleRequest(NULL, Object(Config\Cache), false)
+#9 C:\wamp_84\www\Portfolio\system\Boot.php(417): CodeIgniter\CodeIgniter->run()
+#10 C:\wamp_84\www\Portfolio\system\Boot.php(68): CodeIgniter\Boot::runCodeIgniter(Object(CodeIgniter\CodeIgniter))
+#11 C:\wamp_84\www\Portfolio\public\index.php(59): CodeIgniter\Boot::bootWeb(Object(Config\Paths))
+#12 {main}
+
+Next CodeIgniter\Database\Exceptions\DatabaseException: No connection could be made because the target machine actively refused it in C:\wamp_84\www\Portfolio\system\Database\MySQLi\Connection.php:231
+Stack trace:
+#0 C:\wamp_84\www\Portfolio\system\Database\BaseConnection.php(419): CodeIgniter\Database\MySQLi\Connection->connect(false)
+#1 C:\wamp_84\www\Portfolio\system\Database\BaseConnection.php(654): CodeIgniter\Database\BaseConnection->initialize()
+#2 C:\wamp_84\www\Portfolio\system\Database\BaseBuilder.php(1733): CodeIgniter\Database\BaseConnection->query('SELECT COUNT(*)...', Array, false)
+#3 C:\wamp_84\www\Portfolio\system\Model.php(524): CodeIgniter\Database\BaseBuilder->countAllResults(true)
+#4 C:\wamp_84\www\Portfolio\app\Controllers\Admin.php(589): CodeIgniter\Model->countAllResults()
+#5 C:\wamp_84\www\Portfolio\system\CodeIgniter.php(951): App\Controllers\Admin->check_notifications()
+#6 C:\wamp_84\www\Portfolio\system\CodeIgniter.php(497): CodeIgniter\CodeIgniter->runController(Object(App\Controllers\Admin))
+#7 C:\wamp_84\www\Portfolio\system\CodeIgniter.php(340): CodeIgniter\CodeIgniter->handleRequest(NULL, Object(Config\Cache), false)
+#8 C:\wamp_84\www\Portfolio\system\Boot.php(417): CodeIgniter\CodeIgniter->run()
+#9 C:\wamp_84\www\Portfolio\system\Boot.php(68): CodeIgniter\Boot::runCodeIgniter(Object(CodeIgniter\CodeIgniter))
+#10 C:\wamp_84\www\Portfolio\public\index.php(59): CodeIgniter\Boot::bootWeb(Object(Config\Paths))
+#11 {main}
+CRITICAL - 2026-02-11 05:01:08 --> CodeIgniter\Database\Exceptions\DatabaseException: Unable to connect to the database.
+Main connection [MySQLi]: No connection could be made because the target machine actively refused it
+[Method: GET, Route: admin/check-notifications]
+in SYSTEMPATH\Database\BaseConnection.php on line 465.
+ 1 SYSTEMPATH\Database\BaseConnection.php(654): CodeIgniter\Database\BaseConnection->initialize()
+ 2 SYSTEMPATH\Database\BaseBuilder.php(1733): CodeIgniter\Database\BaseConnection->query('SELECT COUNT(*) AS `numrows`
+FROM `messages`
+WHERE `is_read` = :is_read:', [...], false)
+ 3 SYSTEMPATH\Model.php(524): CodeIgniter\Database\BaseBuilder->countAllResults(true)
+ 4 APPPATH\Controllers\Admin.php(589): CodeIgniter\Model->countAllResults()
+ 5 SYSTEMPATH\CodeIgniter.php(951): App\Controllers\Admin->check_notifications()
+ 6 SYSTEMPATH\CodeIgniter.php(497): CodeIgniter\CodeIgniter->runController(Object(App\Controllers\Admin))
+ 7 SYSTEMPATH\CodeIgniter.php(340): CodeIgniter\CodeIgniter->handleRequest(null, Object(Config\Cache), false)
+ 8 SYSTEMPATH\Boot.php(417): CodeIgniter\CodeIgniter->run()
+ 9 SYSTEMPATH\Boot.php(68): CodeIgniter\Boot::runCodeIgniter(Object(CodeIgniter\CodeIgniter))
+10 FCPATH\index.php(59): CodeIgniter\Boot::bootWeb(Object(Config\Paths))

@@ -57,7 +57,7 @@
                 <h5 class="card-title-custom"><i class="fas fa-user-edit me-2"></i>Edit Profile Details</h5>
             </div>
             <div class="card-body-custom">
-                <form id="profileForm" action="<?= site_url('admin/profile/update') ?>" method="POST" enctype="multipart/form-data">
+                <form id="profileForm" action="<?= site_url('admin/profile/update') ?>" method="POST" enctype="multipart/form-data" onsubmit="return false;">
                     <?= csrf_field() ?>
                     <input type="file" name="profile_image" id="profile_image" class="d-none" accept="image/*" onchange="previewImage(this)">
                     
@@ -129,6 +129,41 @@
     </div>
 </div>
 
+<!-- Change Password -->
+<div class="row mt-4">
+    <div class="col-lg-8 offset-lg-4">
+        <div class="card-custom">
+            <div class="card-header-custom">
+                <h5 class="card-title-custom"><i class="fas fa-lock me-2"></i>Change Password</h5>
+            </div>
+            <div class="card-body-custom">
+                <form id="changePasswordForm" onsubmit="return false;">
+                    <?= csrf_field() ?>
+                    <div class="row">
+                        <div class="col-md-4 mb-3">
+                            <label class="form-label-custom">Current Password</label>
+                            <input type="password" name="current_password" id="currentPassword" class="form-control form-control-custom" placeholder="Enter current password" autocomplete="current-password">
+                        </div>
+                        <div class="col-md-4 mb-3">
+                            <label class="form-label-custom">New Password</label>
+                            <input type="password" name="new_password" id="newPassword" class="form-control form-control-custom" placeholder="Min. 8 characters" autocomplete="new-password">
+                        </div>
+                        <div class="col-md-4 mb-3">
+                            <label class="form-label-custom">Confirm New Password</label>
+                            <input type="password" name="confirm_password" id="confirmPassword" class="form-control form-control-custom" placeholder="Repeat new password" autocomplete="new-password">
+                        </div>
+                    </div>
+                    <div class="text-end">
+                        <button type="submit" class="btn btn-danger px-4">
+                            <i class="fas fa-key me-2"></i>Change Password
+                        </button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+
 <script>
     function previewImage(input) {
         if (input.files && input.files[0]) {
@@ -169,7 +204,7 @@ function initializeProfileHandlers() {
                 var formData = new FormData(this);
                 
                 $.ajax({
-                    url: 'profile/update', // More robust relative URL
+                    url: '<?= site_url("admin/profile/update") ?>',
                     type: 'POST',
                     data: formData,
                     contentType: false,
@@ -199,4 +234,35 @@ function initializeProfileHandlers() {
     
     // Start initialization (will wait for jQuery)
     initializeProfileHandlers();
+
+    // Change Password Handler
+    function initPasswordForm() {
+        if (typeof jQuery === 'undefined') { setTimeout(initPasswordForm, 50); return; }
+        jQuery('#changePasswordForm').on('submit', function(e) {
+            e.preventDefault();
+            var btn = jQuery(this).find('button[type="submit"]');
+            var orig = btn.html();
+            btn.prop('disabled', true).html('<i class="fas fa-spinner fa-spin me-2"></i>Changing...');
+            jQuery.ajax({
+                url: '<?= base_url('admin/profile/change-password') ?>',
+                type: 'POST',
+                data: jQuery(this).serialize(),
+                dataType: 'json',
+                success: function(res) {
+                    if (res.status === 'success') {
+                        toastr.success(res.message);
+                        jQuery('#changePasswordForm')[0].reset();
+                    } else {
+                        toastr.error(res.message);
+                    }
+                    btn.prop('disabled', false).html(orig);
+                },
+                error: function() {
+                    toastr.error('An error occurred. Please try again.');
+                    btn.prop('disabled', false).html(orig);
+                }
+            });
+        });
+    }
+    initPasswordForm();
 </script>

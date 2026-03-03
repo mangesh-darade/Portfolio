@@ -27,11 +27,27 @@ class FeatureSettingsModel extends Model
     }
 
     /**
-     * Get features as key-value pair for easy checking
+     * Get features as key-value pair for easy checking.
+     * Falls back to all-enabled defaults if table is empty.
      */
     public function getFeaturesMap()
     {
         $features = $this->findAll();
+
+        // If table is empty, return safe defaults (all sections visible)
+        if (empty($features)) {
+            return [
+                'hero'         => 1,
+                'skills'       => 1,
+                'projects'     => 1,
+                'experience'   => 1,
+                'education'    => 1,
+                'services'     => 1,
+                'testimonials' => 1,
+                'contact'      => 1,
+            ];
+        }
+
         $map = [];
         foreach ($features as $f) {
             $map[$f['feature_key']] = $f['is_enabled'];

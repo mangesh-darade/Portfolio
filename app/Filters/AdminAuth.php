@@ -10,10 +10,13 @@ class AdminAuth implements FilterInterface
 {
     public function before(RequestInterface $request, $arguments = null)
     {
-        // Skip for login page to avoid infinite redirect
+        // Skip for login page and all public auth pages
         $path = $request->getUri()->getPath();
-        if (strpos($path, 'admin/login') !== false || strpos($path, 'auth/do_login') !== false) {
-            return;
+        $publicPaths = ['admin/login', 'auth/do_login', 'auth/forgot-password', 'auth/forgot_password', 'auth/reset', 'auth/reset_password', 'auth/email-hint'];
+        foreach ($publicPaths as $pub) {
+            if (strpos($path, $pub) !== false) {
+                return;
+            }
         }
 
         // Check if user is logged in

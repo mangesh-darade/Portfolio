@@ -16,7 +16,7 @@
                 <span class="badge bg-primary px-3">Adjustable Theme</span>
             </div>
             <div class="card-body-custom">
-                <form id="themeSettingsForm">
+                <form id="themeSettingsForm" onsubmit="return false;">
                     <div class="row mb-4">
                         <div class="col-md-12 mb-3">
                             <label class="form-label text-muted small text-uppercase fw-bold">Theme Style Preset</label>

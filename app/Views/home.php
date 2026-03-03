@@ -3,6 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="csrf-token" content="<?= csrf_hash() ?>">
     <title><?= isset($seo['site_title']) && $seo['site_title'] ? esc($seo['site_title']) : 'My Portfolio' ?></title>
     <meta name="description" content="<?= isset($seo['site_description']) ? esc($seo['site_description']) : '' ?>">
     <meta name="keywords" content="<?= isset($seo['site_keywords']) ? esc($seo['site_keywords']) : '' ?>">
@@ -15,17 +16,31 @@
         <meta property="og:image" content="<?= base_url('uploads/seo/' . $seo['og_image']) ?>">
     <?php endif; ?>
     
-    <!-- Bootstrap 5 -->
+    <!-- DNS Prefetch + Preconnect for all CDN domains (speeds up TCP handshake) -->
+    <link rel="preconnect" href="https://cdn.jsdelivr.net">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link rel="preconnect" href="https://cdnjs.cloudflare.com">
+    <link rel="dns-prefetch" href="https://unpkg.com">
+
+    <!-- Bootstrap 5 — render-critical, load normally -->
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
-    
-    <!-- Font Awesome -->
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
-    
-    <!-- AOS Animation -->
-    <link href="https://unpkg.com/aos@2.3.1/dist/aos.css" rel="stylesheet">
-    
-    <!-- Google Fonts -->
-    <link href="https://fonts.googleapis.com/css2?family=<?= str_replace(' ', '+', $theme['font_family'] ?? 'Outfit') ?>:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+
+    <!-- Google Fonts — async load with font-display:swap to eliminate FOIT/CLS -->
+    <link rel="preload" as="style" href="https://fonts.googleapis.com/css2?family=<?= str_replace(' ', '+', $theme['font_family'] ?? 'Outfit') ?>:wght@300;400;500;600;700&display=swap" onload="this.onload=null;this.rel='stylesheet'">
+    <noscript><link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=<?= str_replace(' ', '+', $theme['font_family'] ?? 'Outfit') ?>:wght@300;400;500;600;700&display=swap"></noscript>
+
+    <!-- FontAwesome — async (not needed for LCP element) -->
+    <link rel="preload" as="style" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" onload="this.onload=null;this.rel='stylesheet'">
+    <noscript><link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css"></noscript>
+
+    <!-- AOS — async (animation, not needed for initial paint) -->
+    <link rel="preload" as="style" href="https://unpkg.com/aos@2.3.1/dist/aos.css" onload="this.onload=null;this.rel='stylesheet'">
+    <noscript><link rel="stylesheet" href="https://unpkg.com/aos@2.3.1/dist/aos.css"></noscript>
+
+    <!-- Toastr CSS — async, only needed post-interaction -->
+    <link rel="preload" as="style" href="https://cdnjs.cloudflare.com/ajax/libs/toastr.js/latest/toastr.min.css" onload="this.onload=null;this.rel='stylesheet'">
+    <noscript><link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/toastr.js/latest/toastr.min.css"></noscript>
     
     <style>
         :root {
@@ -50,6 +65,9 @@
             --gradient-text: linear-gradient(to right, var(--secondary), var(--primary));
         }
         
+        /* Prevent FOIT — use system font stack until webfont loads */
+        body { font-family: system-ui, -apple-system, sans-serif; }
+
         /* Smooth Scrolling & Scrollbar */
         html { scroll-behavior: smooth; }
         ::-webkit-scrollbar { width: 10px; }
@@ -58,7 +76,7 @@
         ::-webkit-scrollbar-thumb:hover { background: var(--primary); }
 
         body {
-            font-family: '<?= $theme['font_family'] ?? 'Outfit' ?>', sans-serif;
+            font-family: '<?= $theme['font_family'] ?? 'Outfit' ?>', system-ui, -apple-system, sans-serif;
             background-color: var(--dark-bg);
             color: var(--text-main);
             overflow-x: hidden;
@@ -252,7 +270,8 @@
         .project-card:hover { border-color: var(--accent); transform: translateY(-10px); }
         
         .project-img-wrapper { overflow: hidden; position: relative; }
-        .project-img { transition: 0.5s; width: 100%; height: 260px; object-fit: cover; }
+        /* Reserve space before image loads — prevents CLS */
+        .project-img { transition: 0.5s; width: 100%; height: 260px; object-fit: cover; aspect-ratio: 16/9; }
         .project-card:hover .project-img { transform: scale(1.1); filter: brightness(0.6); }
         
         .project-overlay {
@@ -347,6 +366,17 @@
             .hero-title { font-size: 3rem; }
             .section-padding { padding: 60px 0; }
         }
+
+        /* CLS fix: disable AOS shift animations for users who prefer reduced motion */
+        @media (prefers-reduced-motion: reduce) {
+            [data-aos] { opacity: 1 !important; transform: none !important; transition: none !important; }
+        }
+
+        /* Skeleton fallback font while custom font loads */
+        @font-face {
+            font-family: '<?= $theme['font_family'] ?? 'Outfit' ?>';
+            font-display: swap;
+        }
         
         <?php if(isset($theme['custom_css']) && $theme['custom_css']): ?>
         /* Custom User CSS */
@@ -430,9 +460,22 @@
                 <div class="col-lg-6 text-center" data-aos="fade-left">
                     <div class="hero-img-blob d-inline-block p-4">
                         <?php if(isset($profile['profile_image']) && $profile['profile_image']): ?>
-                            <img src="<?= base_url('uploads/profile/' . $profile['profile_image']) ?>" alt="<?= esc($profile['full_name'] ?? 'Developer') ?>" class="img-fluid rounded-circle img-glow" style="max-width: 320px;">
+                            <!-- fetchpriority=high + explicit dimensions = faster LCP + zero CLS -->
+                            <img src="<?= base_url('uploads/profile/' . $profile['profile_image']) ?>"
+                                 alt="<?= esc($profile['full_name'] ?? 'Developer') ?>"
+                                 class="img-fluid rounded-circle img-glow"
+                                 width="320" height="320"
+                                 fetchpriority="high"
+                                 loading="eager"
+                                 style="max-width:320px;width:320px;height:320px;object-fit:cover;">
                         <?php else: ?>
-                            <img src="https://ui-avatars.com/api/?name=<?= urlencode($profile['full_name'] ?? 'Developer') ?>&size=500&background=6c5ce7&color=fff" alt="Developer" class="img-fluid rounded-circle img-glow" style="max-width: 320px;">
+                            <img src="https://ui-avatars.com/api/?name=<?= urlencode($profile['full_name'] ?? 'Developer') ?>&size=320&background=6c5ce7&color=fff"
+                                 alt="<?= esc($profile['full_name'] ?? 'Developer') ?>"
+                                 class="img-fluid rounded-circle img-glow"
+                                 width="320" height="320"
+                                 fetchpriority="high"
+                                 loading="eager"
+                                 style="max-width:320px;width:320px;height:320px;object-fit:cover;">
                         <?php endif; ?>
                     </div>
                 </div>
@@ -607,7 +650,9 @@
                                     <?php if($project['image']): ?>
                                         <img src="<?= base_url('uploads/projects/' . $project['image']) ?>" class="project-img" alt="<?= esc($project['project_name']) ?>">
                                     <?php else: ?>
-                                        <img src="https://via.placeholder.com/600x400?text=Project" class="project-img" alt="Placeholder">
+                                        <div class="project-img d-flex align-items-center justify-content-center" style="background: linear-gradient(135deg, var(--primary) 0%, var(--secondary) 100%); height: 260px;">
+                                            <i class="fas fa-laptop-code fa-4x" style="color: rgba(255,255,255,0.5);"></i>
+                                        </div>
                                     <?php endif; ?>
                                     
                                     <div class="project-overlay">
@@ -756,6 +801,11 @@
                             
                             <div class="col-md-6 ps-md-4">
                                 <form id="contactForm">
+                                    <?= csrf_field() ?>
+                                    <!-- Honeypot field — hidden from real users, bots will fill it -->
+                                    <div style="position:absolute;left:-9999px;top:-9999px;" aria-hidden="true">
+                                        <input type="text" name="website" tabindex="-1" autocomplete="off" value="">
+                                    </div>
                                     <div class="mb-3">
                                         <label class="form-label text-muted small">Your Name</label>
                                         <input type="text" id="contactName" name="name" class="form-control" placeholder="John Doe" required>
@@ -800,11 +850,11 @@
         </div>
     </footer>
 
+    <!-- Scripts: Load in order — inline script below depends on jQuery, AOS, Toastr -->
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
-    <script src="https://unpkg.com/aos@2.3.1/dist/aos.js"></script>
     <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+    <script src="https://unpkg.com/aos@2.3.1/dist/aos.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/toastr.js/latest/toastr.min.js"></script>
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/toastr.js/latest/toastr.min.css">
     
     <script>
         AOS.init({
@@ -814,15 +864,6 @@
         });
 
         // Navbar Scroll Effect
-        window.addEventListener('scroll', function() {
-            if (window.scrollY > 50) {
-                document.querySelector('.navbar').classList.add('scrolled');
-            } else {
-                document.querySelector('.navbar').classList.remove('scrolled');
-            }
-        });
-
-        // Navbar scroll effect
         window.addEventListener('scroll', function() {
             if (window.scrollY > 50) {
                 document.querySelector('.navbar').classList.add('scrolled');
@@ -864,9 +905,10 @@
                 btn.prop('disabled', true).html('<i class="fas fa-spinner fa-spin me-2"></i>Sending...');
                 
                 $.ajax({
-                    url: '<?= base_url('contact/submit') ?>', // Corrected route
+                    url: '<?= base_url('contact/submit') ?>',
                     type: 'POST',
                     data: $(this).serialize(),
+                    headers: { 'X-CSRF-TOKEN': $('meta[name="csrf-token"]').attr('content') },
                     dataType: 'json',
                     success: function(response) {
                         if(response.status === 'success') {

@@ -19,7 +19,7 @@
                 <h5 class="card-title-custom"><i class="fas fa-search me-2"></i>Global SEO Settings</h5>
             </div>
             <div class="card-body-custom">
-                <form id="seoForm" action="<?= base_url('admin/seo/update') ?>" method="POST" enctype="multipart/form-data">
+                <form id="seoForm" action="<?= base_url('admin/seo/update') ?>" method="POST" enctype="multipart/form-data" onsubmit="return false;">
                     <?= csrf_field() ?>
                     
                     <div class="mb-4">

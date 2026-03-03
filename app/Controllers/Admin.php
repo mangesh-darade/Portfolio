@@ -4,21 +4,17 @@ namespace App\Controllers;
 
 class Admin extends BaseController
 {
-    public function initController(\CodeIgniter\HTTP\RequestInterface $request, \CodeIgniter\HTTP\ResponseInterface $response, \Psr\Log\LoggerInterface $logger)
-    {
-        parent::initController($request, $response, $logger);
-        
-        if (! session()->get('isLoggedIn')) {
-            // We can't return a redirect here in initController in CI4 easily that stops execution the same way
-            // So we rely on a Filter or check in each method. 
-            // For simplicity in this quick setup, I'll check in methods or constructor.
-            // But best practice is Filters.
-        }
-    }
+    /**
+     * Auth is handled by AdminAuth filter registered in Routes.php.
+     * No checkAuth() needed per-method — filter runs first.
+     */
 
-    // Auth is now handled by AdminAuth filter in Config/Routes.php
-    private function checkAuth() {
-        return true; 
+    /**
+     * Unified JSON response helper.
+     */
+    private function jsonResponse(string $status, string $message, array $extra = [])
+    {
+        return $this->response->setJSON(array_merge(['status' => $status, 'message' => $message], $extra));
     }
 
     /**
@@ -45,7 +41,6 @@ class Admin extends BaseController
 
     public function index()
     {
-        $this->checkAuth();
         return redirect()->to('/admin/dashboard');
     }
 
@@ -59,36 +54,36 @@ class Admin extends BaseController
 
     public function dashboard()
     {
-        $this->checkAuth();
-        
-        $skillsModel = new \App\Models\SkillsModel();
+        $skillsModel   = new \App\Models\SkillsModel();
         $projectsModel = new \App\Models\ProjectsModel();
-        $profileModel = new \App\Models\UserProfileModel();
-        
+        $profileModel  = new \App\Models\UserProfileModel();
+        $messagesModel = new \App\Models\MessagesModel();
+
         $profile = $profileModel->first();
-        
+
         $data = [
-            'page_title' => 'Dashboard',
-            'active_menu' => 'dashboard',
-            'total_skills' => $skillsModel->where('status', 1)->countAllResults(),
+            'page_title'     => 'Dashboard',
+            'active_menu'    => 'dashboard',
+            'total_skills'   => $skillsModel->where('status', 1)->countAllResults(),
             'total_projects' => $projectsModel->where('status', 1)->countAllResults(),
-            'total_views' => $profile['total_views'] ?? 0
+            'total_views'    => $profile['total_views'] ?? 0,
+            'last_login'     => session()->get('last_login'),
+            'total_messages' => $messagesModel->countAllResults(),
         ];
-        
+
         $this->renderAdminView('admin/dashboard', $data);
     }
 
     public function profile()
     {
-        $this->checkAuth();
         $model = new \App\Models\UserProfileModel();
-        
+
         $data = [
-            'page_title' => 'Profile Settings',
+            'page_title'  => 'Profile Settings',
             'active_menu' => 'profile',
-            'profile' => $model->first() ?? []
+            'profile'     => $model->first() ?? [],
         ];
-        
+
         $this->renderAdminView('admin/profile', $data);
     }
 
@@ -181,7 +176,7 @@ class Admin extends BaseController
             // Ensure upload directory exists
             $uploadPath = FCPATH . 'uploads/resume';
             if (!is_dir($uploadPath)) {
-                mkdir($uploadPath, 0777, true);
+                mkdir($uploadPath, 0755, true);
             }
             
             $newName = $resume->getRandomName();
@@ -216,29 +211,49 @@ class Admin extends BaseController
         }
     }
     
-    // Add other methods (skills, projects) as placeholders
+    // ─── Change Password ──────────────────────────────────────────────────────
+    public function change_password()
+    {
+        $rules = [
+            'current_password' => 'required',
+            'new_password'     => 'required|min_length[8]',
+            'confirm_password' => 'required|matches[new_password]',
+        ];
+
+        if (!$this->validate($rules)) {
+            return $this->jsonResponse('error', implode(' ', \Config\Services::validation()->getErrors()));
+        }
+
+        $db   = \Config\Database::connect();
+        $user = $db->table('admin_users')->where('id', session()->get('id'))->get()->getRow();
+
+        if (!$user || !password_verify($this->request->getPost('current_password'), $user->password)) {
+            return $this->jsonResponse('error', 'Current password is incorrect.');
+        }
+
+        $newHash = password_hash($this->request->getPost('new_password'), PASSWORD_DEFAULT);
+        $db->table('admin_users')->where('id', $user->id)->update(['password' => $newHash]);
+
+        log_message('info', 'Admin password changed for user ID: ' . $user->id);
+        return $this->jsonResponse('success', 'Password changed successfully! Please login again.');
+    }
+
+    // ─── Skills ──────────────────────────────────────────────────────────────
     public function skills()
     {
-        $this->checkAuth();
         $model = new \App\Models\SkillsModel();
-        
+
         $data = [
-            'page_title' => 'Skills',
+            'page_title'  => 'Skills',
             'active_menu' => 'skills',
-            'skills' => $model->orderBy('category', 'ASC')->orderBy('display_order', 'ASC')->findAll()
+            'skills'      => $model->orderBy('category', 'ASC')->orderBy('display_order', 'ASC')->findAll(),
         ];
-        
+
         $this->renderAdminView('admin/skills', $data);
     }
 
     public function add_skill()
     {
-        if ($this->request->getMethod() !== 'post') {
-            $uri = $this->request->getUri()->getPath();
-            return "Skill addition requires POST. Method used: " . $this->request->getMethod() . ". Request URI: " . $uri . ". <br>Tip: If you see this, a redirect converted your POST to GET. Check for trailing slashes or BaseURL mismatch.";
-        }
-        
-        log_message('debug', 'Admin::add_skill POST called.');
         
         $validation = \Config\Services::validation();
         $rules = [
@@ -279,20 +294,17 @@ class Admin extends BaseController
 
     public function get_skill($id)
     {
-        $this->checkAuth();
+        if ((int)$id <= 0) return $this->jsonResponse('error', 'Invalid ID');
         $model = new \App\Models\SkillsModel();
-        $skill = $model->find($id);
-        
+        $skill = $model->find((int)$id);
         if ($skill) {
             return $this->response->setJSON(['status' => 'success', 'data' => $skill]);
         }
-        return $this->response->setJSON(['status' => 'error', 'message' => 'Skill not found']);
+        return $this->jsonResponse('error', 'Skill not found');
     }
 
     public function update_skill()
-    {
-        $this->checkAuth();
-        
+    {        
         $model = new \App\Models\SkillsModel();
         $id = $this->request->getPost('id');
         
@@ -334,19 +346,16 @@ class Admin extends BaseController
 
     public function delete_skill($id)
     {
-        $this->checkAuth();
+        if ((int)$id <= 0) return $this->jsonResponse('error', 'Invalid ID');
         $model = new \App\Models\SkillsModel();
-        
-        if ($model->delete($id)) {
-            return $this->response->setJSON(['status' => 'success', 'message' => 'Skill deleted successfully!']);
+        if ($model->delete((int)$id)) {
+            return $this->jsonResponse('success', 'Skill deleted successfully!');
         }
-        return $this->response->setJSON(['status' => 'error', 'message' => 'Failed to delete skill']);
+        return $this->jsonResponse('error', 'Failed to delete skill');
     }
 
     public function projects()
-    {
-        $this->checkAuth();
-        $model = new \App\Models\ProjectsModel();
+    {        $model = new \App\Models\ProjectsModel();
         
         $data = [
             'page_title' => 'Projects',
@@ -359,12 +368,6 @@ class Admin extends BaseController
 
     public function add_project()
     {
-        if ($this->request->getMethod() !== 'post') {
-            return "Project addition requires POST. Method used: " . $this->request->getMethod() . ". Check for redirects or form method issues.";
-        }
-        
-        log_message('debug', 'Admin::add_project POST called.');
-        
         $validation = \Config\Services::validation();
         $rules = [
             'project_name' => 'required',
@@ -443,9 +446,7 @@ class Admin extends BaseController
     }
 
     public function get_project($id)
-    {
-        $this->checkAuth();
-        $model = new \App\Models\ProjectsModel();
+    {        $model = new \App\Models\ProjectsModel();
         $project = $model->find($id);
         
         if ($project) {
@@ -455,9 +456,7 @@ class Admin extends BaseController
     }
 
     public function update_project()
-    {
-        $this->checkAuth();
-        $model = new \App\Models\ProjectsModel();
+    {        $model = new \App\Models\ProjectsModel();
         $id = $this->request->getPost('id');
         
         if (!$id) {
@@ -544,25 +543,23 @@ class Admin extends BaseController
 
     public function delete_project($id)
     {
-        $this->checkAuth();
-        $model = new \App\Models\ProjectsModel();
-        
-        // Get image to delete file
-        $project = $model->find($id);
-        if ($project['image'] && file_exists(FCPATH . 'uploads/projects/' . $project['image'])) {
-            unlink(FCPATH . 'uploads/projects/' . $project['image']);
+        if ((int)$id <= 0) return $this->jsonResponse('error', 'Invalid ID');
+        $model   = new \App\Models\ProjectsModel();
+        $project = $model->find((int)$id);
+        if ($project && !empty($project['image'])) {
+            $imgPath = FCPATH . 'uploads/projects/' . $project['image'];
+            if (file_exists($imgPath)) {
+                @unlink($imgPath);
+            }
         }
-        
-        if ($model->delete($id)) {
-            return $this->response->setJSON(['status' => 'success', 'message' => 'Project deleted successfully!']);
+        if ($model->delete((int)$id)) {
+            return $this->jsonResponse('success', 'Project deleted successfully!');
         }
-        return $this->response->setJSON(['status' => 'error', 'message' => 'Failed to delete project']);
+        return $this->jsonResponse('error', 'Failed to delete project');
     }
 
     public function messages()
-    {
-        $this->checkAuth();
-        $model = new \App\Models\MessagesModel();
+    {        $model = new \App\Models\MessagesModel();
         
         $data = [
             'page_title' => 'Inbox',
@@ -574,17 +571,13 @@ class Admin extends BaseController
     }
 
     public function mark_message_read($id)
-    {
-        $this->checkAuth();
-        $model = new \App\Models\MessagesModel();
+    {        $model = new \App\Models\MessagesModel();
         $model->update($id, ['is_read' => 1]);
         return $this->response->setJSON(['status' => 'success']);
     }
 
     public function check_notifications()
-    {
-        $this->checkAuth();
-        $model = new \App\Models\MessagesModel();
+    {        $model = new \App\Models\MessagesModel();
         
         $unread_count = $model->where('is_read', 0)->countAllResults();
         $latest = $model->where('is_read', 0)->orderBy('created_at', 'DESC')->first();
@@ -597,9 +590,7 @@ class Admin extends BaseController
     }
 
     public function delete_message($id)
-    {
-        $this->checkAuth();
-        $model = new \App\Models\MessagesModel();
+    {        $model = new \App\Models\MessagesModel();
         if ($model->delete($id)) {
             return $this->response->setJSON(['status' => 'success', 'message' => 'Message deleted successfully!']);
         }
@@ -607,9 +598,7 @@ class Admin extends BaseController
     }
 
     public function contact()
-    {
-        $this->checkAuth();
-        $model = new \App\Models\ContactModel();
+    {        $model = new \App\Models\ContactModel();
         
         $data = [
             'page_title' => 'Contact Info',
@@ -621,9 +610,7 @@ class Admin extends BaseController
     }
 
     public function update_contact()
-    {
-        $this->checkAuth();
-        $model = new \App\Models\ContactModel();
+    {        $model = new \App\Models\ContactModel();
         
         $data = [
             'email' => $this->request->getPost('email'),
@@ -647,9 +634,7 @@ class Admin extends BaseController
 
     // Experience Section
     public function experience()
-    {
-        $this->checkAuth();
-        $model = new \App\Models\ExperienceModel();
+    {        $model = new \App\Models\ExperienceModel();
         
         $data = [
             'page_title' => 'Experience',
@@ -661,9 +646,7 @@ class Admin extends BaseController
     }
 
     public function add_experience()
-    {
-        $this->checkAuth();
-        
+    {        
         $rules = [
             'job_title' => 'required',
             'company' => 'required',
@@ -693,9 +676,7 @@ class Admin extends BaseController
     }
 
     public function get_experience($id)
-    {
-        $this->checkAuth();
-        $model = new \App\Models\ExperienceModel();
+    {        $model = new \App\Models\ExperienceModel();
         $data = $model->find($id);
         
         if ($data) {
@@ -705,9 +686,7 @@ class Admin extends BaseController
     }
 
     public function update_experience()
-    {
-        $this->checkAuth();
-        $id = $this->request->getPost('id');
+    {        $id = $this->request->getPost('id');
         
         if (!$id) return $this->response->setJSON(['status' => 'error', 'message' => 'ID missing']);
         
@@ -731,9 +710,7 @@ class Admin extends BaseController
     }
 
     public function delete_experience($id)
-    {
-        $this->checkAuth();
-        $model = new \App\Models\ExperienceModel();
+    {        $model = new \App\Models\ExperienceModel();
         if ($model->delete($id)) {
             return $this->response->setJSON(['status' => 'success', 'message' => 'Deleted successfully']);
         }
@@ -742,9 +719,7 @@ class Admin extends BaseController
 
     // Education Section
     public function education()
-    {
-        $this->checkAuth();
-        $model = new \App\Models\EducationModel();
+    {        $model = new \App\Models\EducationModel();
         
         $data = [
             'page_title' => 'Education',
@@ -756,9 +731,7 @@ class Admin extends BaseController
     }
 
     public function add_education()
-    {
-        $this->checkAuth();
-        
+    {        
         $rules = [
             'degree' => 'required',
             'institution' => 'required',
@@ -789,9 +762,7 @@ class Admin extends BaseController
     }
 
     public function get_education($id)
-    {
-        $this->checkAuth();
-        $model = new \App\Models\EducationModel();
+    {        $model = new \App\Models\EducationModel();
         $data = $model->find($id);
         
         if ($data) {
@@ -801,9 +772,7 @@ class Admin extends BaseController
     }
 
     public function update_education()
-    {
-        $this->checkAuth();
-        $id = $this->request->getPost('id');
+    {        $id = $this->request->getPost('id');
         
         if (!$id) return $this->response->setJSON(['status' => 'error', 'message' => 'ID missing']);
         
@@ -827,9 +796,7 @@ class Admin extends BaseController
     }
 
     public function delete_education($id)
-    {
-        $this->checkAuth();
-        $model = new \App\Models\EducationModel();
+    {        $model = new \App\Models\EducationModel();
         if ($model->delete($id)) {
             return $this->response->setJSON(['status' => 'success', 'message' => 'Deleted successfully']);
         }
@@ -838,9 +805,7 @@ class Admin extends BaseController
 
     // Services Section
     public function services()
-    {
-        $this->checkAuth();
-        $model = new \App\Models\ServicesModel();
+    {        $model = new \App\Models\ServicesModel();
         
         $data = [
             'page_title' => 'Services (Offerings)',
@@ -852,9 +817,7 @@ class Admin extends BaseController
     }
 
     public function add_service()
-    {
-        $this->checkAuth();
-        
+    {        
         $rules = [
             'title' => 'required',
             'description' => 'required',
@@ -881,9 +844,7 @@ class Admin extends BaseController
     }
 
     public function get_service($id)
-    {
-        $this->checkAuth();
-        $model = new \App\Models\ServicesModel();
+    {        $model = new \App\Models\ServicesModel();
         $data = $model->find($id);
         
         if ($data) {
@@ -893,9 +854,7 @@ class Admin extends BaseController
     }
 
     public function update_service()
-    {
-        $this->checkAuth();
-        $id = $this->request->getPost('id');
+    {        $id = $this->request->getPost('id');
         
         if (!$id) return $this->response->setJSON(['status' => 'error', 'message' => 'ID missing']);
         
@@ -917,9 +876,7 @@ class Admin extends BaseController
     }
 
     public function delete_service($id)
-    {
-        $this->checkAuth();
-        $model = new \App\Models\ServicesModel();
+    {        $model = new \App\Models\ServicesModel();
         if ($model->delete($id)) {
             return $this->response->setJSON(['status' => 'success', 'message' => 'Deleted successfully']);
         }
@@ -928,9 +885,7 @@ class Admin extends BaseController
 
     // Testimonials Section
     public function testimonials()
-    {
-        $this->checkAuth();
-        $model = new \App\Models\TestimonialsModel();
+    {        $model = new \App\Models\TestimonialsModel();
         
         $data = [
             'page_title' => 'Testimonials',
@@ -942,9 +897,7 @@ class Admin extends BaseController
     }
 
     public function add_testimonial()
-    {
-        $this->checkAuth();
-        
+    {        
         $rules = [
             'name' => 'required',
             'role' => 'required',
@@ -988,9 +941,7 @@ class Admin extends BaseController
     }
 
     public function get_testimonial($id)
-    {
-        $this->checkAuth();
-        $model = new \App\Models\TestimonialsModel();
+    {        $model = new \App\Models\TestimonialsModel();
         $data = $model->find($id);
         
         if ($data) {
@@ -1000,9 +951,7 @@ class Admin extends BaseController
     }
 
     public function update_testimonial()
-    {
-        $this->checkAuth();
-        $id = $this->request->getPost('id');
+    {        $id = $this->request->getPost('id');
         
         if (!$id) return $this->response->setJSON(['status' => 'error', 'message' => 'ID missing']);
         
@@ -1047,9 +996,7 @@ class Admin extends BaseController
     }
 
     public function delete_testimonial($id)
-    {
-        $this->checkAuth();
-        $model = new \App\Models\TestimonialsModel();
+    {        $model = new \App\Models\TestimonialsModel();
         
         // Delete image first
         $info = $model->find($id);
@@ -1066,9 +1013,7 @@ class Admin extends BaseController
 
     // SEO Settings
     public function seo()
-    {
-        $this->checkAuth();
-        $model = new \App\Models\SeoModel();
+    {        $model = new \App\Models\SeoModel();
         
         $data = [
             'page_title' => 'SEO Settings',
@@ -1080,9 +1025,7 @@ class Admin extends BaseController
     }
 
     public function update_seo()
-    {
-        $this->checkAuth();
-        
+    {        
         $model = new \App\Models\SeoModel();
         $seo = $model->first();
         $id = $seo ? $seo['id'] : null;
@@ -1125,53 +1068,97 @@ class Admin extends BaseController
         return $this->response->setJSON(['status' => 'success', 'message' => 'SEO settings updated successfully']);
     }
 
-    // Email Settings
+    // ─── Email Settings ───────────────────────────────────────────────────────
     public function email_settings()
     {
-        $this->checkAuth();
         $model = new \App\Models\EmailSettingsModel();
-        
-        $data = [
-            'page_title' => 'Email Settings',
+        $data  = [
+            'page_title'  => 'Email Settings',
             'active_menu' => 'email_settings',
-            'settings' => $model->first()
+            'settings'    => $model->first(),
         ];
-        
         $this->renderAdminView('admin/email_settings', $data);
     }
 
     public function update_email_settings()
     {
-        $this->checkAuth();
-        $model = new \App\Models\EmailSettingsModel();
-        $settings = $model->first();
-        $id = $settings ? $settings['id'] : null;
-        
-        $data = [
-            'protocol' => $this->request->getPost('protocol'),
-            'smtp_host' => $this->request->getPost('smtp_host'),
-            'smtp_user' => $this->request->getPost('smtp_user'),
-            'smtp_pass' => $this->request->getPost('smtp_pass'),
-            'smtp_port' => $this->request->getPost('smtp_port'),
-            'smtp_crypto' => $this->request->getPost('smtp_crypto'),
-            'from_email' => $this->request->getPost('from_email'),
-            'from_name' => $this->request->getPost('from_name'),
+        $rules = [
+            'smtp_host'  => 'required',
+            'smtp_user'  => 'required|valid_email',
+            'smtp_pass'  => 'required',
+            'smtp_port'  => 'required|numeric',
+            'from_email' => 'required|valid_email',
+            'from_name'  => 'required',
         ];
-        
+
+        if (!$this->validate($rules)) {
+            return $this->response->setJSON(['status' => 'error', 'errors' => \Config\Services::validation()->getErrors()]);
+        }
+
+        $model    = new \App\Models\EmailSettingsModel();
+        $settings = $model->first();
+        $id       = $settings ? $settings['id'] : null;
+
+        $data = [
+            'protocol'    => $this->request->getPost('protocol'),
+            'smtp_host'   => $this->request->getPost('smtp_host'),
+            'smtp_user'   => $this->request->getPost('smtp_user'),
+            'smtp_pass'   => $this->request->getPost('smtp_pass'),
+            'smtp_port'   => (int) $this->request->getPost('smtp_port'),
+            'smtp_crypto' => $this->request->getPost('smtp_crypto'),
+            'from_email'  => $this->request->getPost('from_email'),
+            'from_name'   => $this->request->getPost('from_name'),
+            'updated_at'  => date('Y-m-d H:i:s'),
+        ];
+
         if ($id) {
             $model->update($id, $data);
         } else {
             $model->save($data);
         }
 
-        return $this->response->setJSON(['status' => 'success', 'message' => 'Email settings updated successfully']);
+        return $this->jsonResponse('success', 'Email settings updated successfully.');
+    }
+
+    public function test_email()
+    {
+        $model    = new \App\Models\EmailSettingsModel();
+        $settings = $model->first();
+
+        if (!$settings) {
+            return $this->jsonResponse('error', 'Email settings are not configured yet.');
+        }
+
+        $config = [
+            'protocol'   => $settings['protocol'] ?? 'smtp',
+            'SMTPHost'   => $settings['smtp_host'],
+            'SMTPUser'   => $settings['smtp_user'],
+            'SMTPPass'   => $settings['smtp_pass'],
+            'SMTPPort'   => (int)($settings['smtp_port'] ?? 587),
+            'SMTPCrypto' => $settings['smtp_crypto'] ?? 'tls',
+            'mailType'   => 'html',
+            'charset'    => 'utf-8',
+        ];
+
+        $email = \Config\Services::email();
+        $email->initialize($config);
+        $email->setFrom($settings['from_email'], $settings['from_name']);
+        $email->setTo($settings['smtp_user']);
+        $email->setSubject('✅ Portfolio Admin — Email Test');
+        $email->setMessage('<h3>Email test successful!</h3><p>Your SMTP configuration is working correctly.</p><p>Sent at: ' . date('Y-m-d H:i:s') . '</p>');
+
+        if ($email->send()) {
+            return $this->jsonResponse('success', 'Test email sent to ' . $settings['smtp_user'] . '. Please check your inbox.');
+        } else {
+            $debugInfo = $email->printDebugger(['headers']);
+            log_message('error', 'Test email failed: ' . $debugInfo);
+            return $this->jsonResponse('error', 'Failed to send test email. Check your SMTP credentials. Error logged.');
+        }
     }
 
     // Display Features Management
     public function features()
-    {
-        $this->checkAuth();
-        $model = new \App\Models\FeatureSettingsModel();
+    {        $model = new \App\Models\FeatureSettingsModel();
         
         $data = [
             'page_title' => 'Display Features',
@@ -1183,9 +1170,7 @@ class Admin extends BaseController
     }
 
     public function update_features()
-    {
-        $this->checkAuth();
-        $model = new \App\Models\FeatureSettingsModel();
+    {        $model = new \App\Models\FeatureSettingsModel();
         $featuresData = $this->request->getPost('features');
         
         if ($featuresData) {
@@ -1204,9 +1189,7 @@ class Admin extends BaseController
 
     // Theme Settings
     public function theme_settings()
-    {
-        $this->checkAuth();
-        $model = new \App\Models\ThemeSettingsModel();
+    {        $model = new \App\Models\ThemeSettingsModel();
         
         $data = [
             'page_title' => 'Theme Customizer',
@@ -1218,9 +1201,7 @@ class Admin extends BaseController
     }
 
     public function update_theme()
-    {
-        $this->checkAuth();
-        $model = new \App\Models\ThemeSettingsModel();
+    {        $model = new \App\Models\ThemeSettingsModel();
         $theme = $model->first();
         $id = $theme ? $theme['id'] : null;
         
@@ -1243,6 +1224,44 @@ class Admin extends BaseController
             $model->save($data);
         }
 
-        return $this->response->setJSON(['status' => 'success', 'message' => 'Theme settings updated successfully']);
+        return $this->jsonResponse('success', 'Theme settings updated successfully.');
+    }
+
+    // ─── Internal upload helper ───────────────────────────────────────────────
+    /**
+     * Handles file upload with MIME + size validation.
+     *
+     * @param  string   $fieldName     HTML input name
+     * @param  string   $uploadSubDir  e.g. 'projects', 'profile'
+     * @param  array    $allowedMimes  Allowed MIME types
+     * @param  int      $maxSizeBytes  Max file size in bytes
+     * @return array ['ok' => bool, 'name' => string, 'error' => string]
+     */
+    private function handleUpload(string $fieldName, string $uploadSubDir, array $allowedMimes, int $maxSizeBytes = 2097152): array
+    {
+        $file = $this->request->getFile($fieldName);
+
+        if (!$file || !$file->isValid() || $file->hasMoved()) {
+            return ['ok' => false, 'skip' => true]; // No file uploaded — skip silently
+        }
+
+        if (!in_array($file->getMimeType(), $allowedMimes)) {
+            return ['ok' => false, 'error' => 'Invalid file type. Allowed: ' . implode(', ', $allowedMimes)];
+        }
+
+        if ($file->getSize() > $maxSizeBytes) {
+            $maxMb = round($maxSizeBytes / 1048576, 1);
+            return ['ok' => false, 'error' => "File too large. Maximum {$maxMb}MB allowed."];
+        }
+
+        $uploadPath = FCPATH . 'uploads/' . $uploadSubDir;
+        if (!is_dir($uploadPath)) {
+            mkdir($uploadPath, 0755, true);
+        }
+
+        $newName = $file->getRandomName();
+        $file->move($uploadPath, $newName);
+
+        return ['ok' => true, 'name' => $newName];
     }
 }

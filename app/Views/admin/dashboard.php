@@ -10,7 +10,10 @@
                 </ol>
             </nav>
         </div>
-        <div>
+        <div class="d-flex align-items-center gap-3">
+            <?php if(isset($last_login) && $last_login): ?>
+            <span class="text-muted small"><i class="fas fa-clock me-1"></i>Last login: <?= date('M d, Y H:i', strtotime($last_login)) ?></span>
+            <?php endif; ?>
             <a href="<?= base_url() ?>" target="_blank" class="btn btn-outline-primary">
                 <i class="fas fa-external-link-alt me-2"></i>View Site
             </a>
@@ -84,10 +87,21 @@
                     </div>
                     <div class="stat-trend <?= (isset($unread_count) && $unread_count > 0) ? 'up' : '' ?>">
                         <i class="fas <?= (isset($unread_count) && $unread_count > 0) ? 'fa-arrow-up' : 'fa-check' ?> me-1"></i> 
-                        <?= (isset($unread_count) && $unread_count > 0) ? 'New today' : 'Up to date' ?>
+                        <?= (isset($unread_count) && $unread_count > 0) ? $unread_count . ' unread' : 'All read' ?>
                     </div>
                 </div>
             </a>
+        </div>
+
+        <!-- Total Messages -->
+        <div class="col-md-12 col-lg-12">
+            <div class="alert" style="background: rgba(108,92,231,0.08); border: 1px solid rgba(108,92,231,0.2); border-radius: 12px; color: var(--text-color);" role="alert">
+                <i class="fas fa-info-circle me-2 text-primary"></i>
+                <strong><?= number_format($total_messages ?? 0) ?></strong> total messages received &nbsp;·&nbsp;
+                <strong><?= number_format($total_views ?? 0) ?></strong> total portfolio views &nbsp;·&nbsp;
+                <strong><?= $total_projects ?? 0 ?></strong> live projects &nbsp;·&nbsp;
+                <strong><?= $total_skills ?? 0 ?></strong> active skills
+            </div>
         </div>
     </div>
 
